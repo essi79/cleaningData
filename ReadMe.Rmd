@@ -1,0 +1,112 @@
+---
+title: "ReadMe"
+author: "Essi Shams"
+date: "September 3, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This markdown file describes the steps taken in the run_analysis.R script to prepare and clean up the data. 
+The first step taken is to load the dplyr library. This library is utilized heavily in this project. 
+
+```{r}
+library(dplyr)
+
+```
+
+The next step is setting the paths to the files that will need to be imported in order to load the data into the R environment. Each of the variables below hold the path to one of the text files in the current working directory.
+
+```{r}
+trainingFilePath = "UCI HAR Dataset/train/X_train.txt"
+trainingLabelsFilePath = "UCI HAR Dataset/train/y_train.txt"
+testFilePath ="UCI HAR Dataset/test/X_test.txt"
+testLabelsFilePath = "UCI HAR Dataset/test/y_test.txt"
+featureLabelsFilePath = "UCI HAR Dataset/features.txt"
+trainSubjectsFilePath = "UCI HAR Dataset/train/subject_train.txt"
+testSubjectsFilePath = "UCI HAR Dataset/test/subject_test.txt"
+activitiesFilePath = "UCI HAR Dataset/activity_labels.txt"
+```
+
+
+the below code reads in the contents of the text files into the above data frames:
+
+```{r}
+trainingData <- read.table(trainingFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+trainingLabels <- read.table(trainingLabelsFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+testData <- read.table(testFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+testLabels <- read.table(testLabelsFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+featureLabels <- read.table(featureLabelsFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+testSubjects <- read.table(testSubjectsFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+trainingSubjects <- read.table(trainSubjectsFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+activities <- read.table(activitiesFilePath, sep="", header=FALSE, stringsAsFactors = FALSE)
+```
+
+For clarity and tidiness of data, column names are set for the dataframes:
+
+```{r}
+names(trainingSubjects) <- "subject"
+names(testSubjects) <- "subject"
+names(trainingLabels) <- "activityCode"
+names(testLabels) <- "activityCode"
+names(featureLabels) <- c("rowID","featureName")
+featureLabels <- mutate(featureLabels,fullFeatureName=paste(rowID,featureName))
+names(trainingData) <- featureLabels$fullFeatureName
+names(testData) <- featureLabels$fullFeatureName
+names(activities) <- c("activityCode", "activityDesc")
+```
+
+The trainingLabels and testLabels dataframes that hold the activity codes for each observation, are merged with the activties dataframe to obtain the activity description for each observation:
+
+```{r}
+trainingLabels <- merge(trainingLabels, activities, by.x="activityCode", by.y = "activityCode", sort = FALSE)
+testLabels <- merge(testLabels, activities, by.x="activityCode", by.y = "activityCode", sort = FALSE)
+```
+
+Only the activityDesc column is retained from each of the above two dataframes, because we are only interested in having a description of the activity:
+
+```{r}
+trainingLabels <- select(trainingLabels,activityDesc)
+testLabels <- select(testLabels, activityDesc)
+```
+
+because we are eventually going to combine our training and test data together, it is useful to have a column to identify whether each observation belonged to training or test data. 
+
+```{r}
+trainingData <- mutate(trainingData,obsType = "training")
+testData <- mutate(testData, obsType = "test")
+```
+
+now we are ready to append the column containing the activity description, and the subject code to our training and test data respectively:
+
+```{r}
+trainingData <- cbind(trainingLabels, trainingData)
+testData <- cbind(testLabels, testData)
+
+trainingData <- cbind(trainingSubjects, trainingData)
+testData <- cbind(testSubjects, testData)
+```
+
+and finally we combine both training and test datasets into one dataframe:
+
+```{r}
+allData <- rbind(trainingData, testData)
+```
+
+But we only want to retain the features that are either a mean or a std measurement.
+
+```{r}
+allData <- select(allData, subject, activityDesc, obsType, grep("mean|std",names(allData)))
+```
+
+We then group the data by subject and activity, and summarize each column to get its mean by the groups:
+
+```{r}
+groupedData <- group_by(allData, subject, obsType, activityDesc)
+featureMeansBySubjectActivity <- summarize_each(groupedData,funs(mean))
+```
+

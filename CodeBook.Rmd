@@ -1,0 +1,27 @@
+---
+title: "CodeBook"
+author: "Essi Shams"
+date: "September 1, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+The read.table command is then used to read the contents of the text files into an R dataframe. 
+This is a description of each variable:
+
+* trainingData : the training dataset
+* trainingLabels : the activity labels associated with the training dataset
+* testData : the test dataset
+* testLabels : the activity labels associated with the test dataset
+* featureLabels : the labels for the 561 features extracted from the data
+* testSubjects : the subject codes for test data
+* trainingSubjects : the subject codes for training data
+* activities : description of each activity code
+
